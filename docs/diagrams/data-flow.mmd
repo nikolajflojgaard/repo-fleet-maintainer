@@ -1,0 +1,9 @@
+flowchart LR
+  Source[Code and config]
+  Processor[Documentation pipeline]
+  Store[(Generated inventory)]
+  Docs[Markdown and Mermaid docs]
+
+  Source -->|reads| Processor
+  Processor -->|writes| Store
+  Processor -->|updates| Docs

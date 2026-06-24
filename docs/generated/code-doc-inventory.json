@@ -1,0 +1,95 @@
+{
+  "counts": {
+    "deployments": 0,
+    "entrypoints": 0,
+    "files": 9,
+    "flows": 0,
+    "frameworks": 0,
+    "interfaces": 0,
+    "manifests": 0,
+    "routes": 0
+  },
+  "deployments": [],
+  "entrypoints": [],
+  "files": [
+    {
+      "path": ".gitignore",
+      "size": 62,
+      "suffix": "",
+      "tags": []
+    },
+    {
+      "path": "LICENSE",
+      "size": 1075,
+      "suffix": "",
+      "tags": []
+    },
+    {
+      "path": "README.md",
+      "size": 1479,
+      "suffix": ".md",
+      "tags": []
+    },
+    {
+      "path": "SKILL.md",
+      "size": 5653,
+      "suffix": ".md",
+      "tags": []
+    },
+    {
+      "path": "code-docs.yml",
+      "size": 241,
+      "suffix": ".yml",
+      "tags": []
+    },
+    {
+      "path": "examples/fleet-report-example.md",
+      "size": 466,
+      "suffix": ".md",
+      "tags": []
+    },
+    {
+      "path": "scripts/repo_fleet_scan.py",
+      "size": 10607,
+      "suffix": ".py",
+      "tags": []
+    },
+    {
+      "path": "templates/fleet-report.md",
+      "size": 284,
+      "suffix": ".md",
+      "tags": []
+    },
+    {
+      "path": "templates/repo-finding.json",
+      "size": 203,
+      "suffix": ".json",
+      "tags": []
+    }
+  ],
+  "flows": [],
+  "frameworks": [],
+  "interfaces": [],
+  "manifests": [],
+  "repo": "repo-fleet-maintainer",
+  "root": ".",
+  "routes": [],
+  "tree": {
+    ".gitignore": null,
+    "LICENSE": null,
+    "README.md": null,
+    "SKILL.md": null,
+    "code-docs.yml": null,
+    "examples": {
+      "fleet-report-example.md": null
+    },
+    "scripts": {
+      "repo_fleet_scan.py": null
+    },
+    "templates": {
+      "fleet-report.md": null,
+      "repo-finding.json": null
+    }
+  },
+  "truncated": false
+}

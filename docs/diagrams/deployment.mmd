@@ -1,0 +1,9 @@
+flowchart TB
+  Change[Code change]
+  CI[CI pipeline]
+  Docs[Generated docs]
+  Review[Pull request review]
+
+  Change -->|triggers| CI
+  CI -->|generates/checks| Docs
+  Docs -->|diff reviewed in| Review

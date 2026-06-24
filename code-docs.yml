@@ -1,0 +1,13 @@
+service_name: repo-fleet-maintainer
+owner: Nikolaj Fløjgaard
+strict: true
+docs_dir: docs
+required_diagrams:
+  - context.mmd
+  - container-or-flow.mmd
+  - critical-sequence.mmd
+  - data-flow.mmd
+  - deployment.mmd
+exclude:
+  - .git
+  - docs

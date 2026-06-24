@@ -1,0 +1,8 @@
+sequenceDiagram
+  participant Developer
+  participant Repository
+  participant Documentation
+
+  Developer->>Repository: Change code
+  Repository->>Documentation: Regenerate docs
+  Documentation-->>Developer: Review diff
