@@ -9,10 +9,12 @@ performs a lightweight secret-pattern scan.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import os
 import re
 import subprocess
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -60,6 +62,8 @@ class RepoReport:
     scripts: dict[str, str] = field(default_factory=dict)
     audit: dict[str, Any] | None = None
     secret_findings: list[dict[str, str]] = field(default_factory=list)
+    cleanup_reasons: list[str] = field(default_factory=list)
+    last_commit_days: int | None = None
     findings: list[str] = field(default_factory=list)
     recommendation: str = "watch"
 
@@ -75,7 +79,22 @@ def run(cmd: list[str], cwd: Path, timeout: int = 30) -> subprocess.CompletedPro
     )
 
 
-def discover_repos(roots: list[Path], max_depth: int) -> list[Path]:
+def load_config(path: str | None) -> dict[str, Any]:
+    if not path:
+        return {}
+    config_path = Path(path).expanduser()
+    try:
+        return json.loads(config_path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"Failed to read config {config_path}: {exc}") from exc
+
+
+def ignored(path: Path, patterns: list[str]) -> bool:
+    text = str(path)
+    return any(fnmatch.fnmatch(path.name, pattern) or fnmatch.fnmatch(text, pattern) for pattern in patterns)
+
+
+def discover_repos(roots: list[Path], max_depth: int, ignore_patterns: list[str]) -> list[Path]:
     repos: list[Path] = []
     seen: set[Path] = set()
 
@@ -83,6 +102,8 @@ def discover_repos(roots: list[Path], max_depth: int) -> list[Path]:
         if depth > max_depth:
             return
         if path.name in EXCLUDED_DIRS:
+            return
+        if ignored(path, ignore_patterns):
             return
         if (path / ".git").is_dir():
             resolved = path.resolve()
@@ -154,6 +175,14 @@ def git_remote(repo: Path) -> str:
     return remote.stdout.strip() if remote.returncode == 0 else ""
 
 
+def last_commit_age_days(repo: Path) -> int | None:
+    result = run(["git", "log", "-1", "--format=%ct"], repo)
+    if result.returncode != 0 or not result.stdout.strip().isdigit():
+        return None
+    timestamp = int(result.stdout.strip())
+    return max(0, int((time.time() - timestamp) / 86400))
+
+
 def npm_audit(repo: Path) -> dict[str, Any] | None:
     if not (repo / "package-lock.json").exists():
         return None
@@ -203,6 +232,17 @@ def secret_scan(repo: Path, max_findings: int = 20) -> list[dict[str, str]]:
     return findings
 
 
+def build_cleanup_reasons(report: RepoReport, stale_days: int) -> list[str]:
+    reasons: list[str] = []
+    if not report.remote and not report.dirty:
+        reasons.append("No origin remote and clean worktree.")
+    if report.types == ["unknown"] and not report.dirty:
+        reasons.append("Unknown repo type and clean worktree.")
+    if report.last_commit_days is not None and report.last_commit_days >= stale_days and not report.dirty:
+        reasons.append(f"No commits in {report.last_commit_days} days.")
+    return reasons
+
+
 def recommendation(report: RepoReport) -> str:
     if report.secret_findings:
         return "needs-review"
@@ -216,12 +256,14 @@ def recommendation(report: RepoReport) -> str:
             return "needs-review"
         if high or total:
             return "safe-fix"
+    if report.cleanup_reasons:
+        return "cleanup-candidate"
     if not report.remote:
         return "blocked"
     return "watch"
 
 
-def inspect_repo(repo: Path, audit_node: bool, scan_secrets: bool) -> RepoReport:
+def inspect_repo(repo: Path, audit_node: bool, scan_secrets: bool, stale_days: int) -> RepoReport:
     branch, dirty, ahead, behind = git_status(repo)
     types, scripts = classify_repo(repo)
     report = RepoReport(
@@ -235,10 +277,12 @@ def inspect_repo(repo: Path, audit_node: bool, scan_secrets: bool) -> RepoReport
         types=types,
         scripts=scripts,
     )
+    report.last_commit_days = last_commit_age_days(repo)
     if audit_node and "node" in types:
         report.audit = npm_audit(repo)
     if scan_secrets:
         report.secret_findings = secret_scan(repo)
+    report.cleanup_reasons = build_cleanup_reasons(report, stale_days)
     if not report.remote:
         report.findings.append("No origin remote configured.")
     if report.dirty:
@@ -249,14 +293,18 @@ def inspect_repo(repo: Path, audit_node: bool, scan_secrets: bool) -> RepoReport
             report.findings.append(f"npm audit reports {total} vulnerabilities.")
     if report.secret_findings:
         report.findings.append("Potential secret findings need review.")
+    for reason in report.cleanup_reasons:
+        report.findings.append(f"Cleanup candidate: {reason}")
     report.recommendation = recommendation(report)
     return report
 
 
-def markdown_report(reports: list[RepoReport]) -> str:
+def markdown_report(reports: list[RepoReport], only_actionable: bool) -> str:
     lines = ["# Repo Fleet Report", ""]
-    buckets = ["safe-fix", "needs-review", "blocked", "watch"]
+    buckets = ["safe-fix", "needs-review", "blocked", "cleanup-candidate", "watch"]
     for bucket in buckets:
+        if only_actionable and bucket == "watch":
+            continue
         items = [r for r in reports if r.recommendation == bucket]
         lines.append(f"## {bucket}")
         lines.append("")
@@ -271,7 +319,8 @@ def markdown_report(reports: list[RepoReport]) -> str:
                 vulns = report.audit.get("vulnerabilities", {})
                 audit = f", audit total {vulns.get('total', 0)}"
             remote = "remote" if report.remote else "no remote"
-            lines.append(f"- **{report.name}** ({', '.join(report.types)}; {dirty}; {remote}{audit})")
+            age = f"; last commit {report.last_commit_days}d ago" if report.last_commit_days is not None else ""
+            lines.append(f"- **{report.name}** ({', '.join(report.types)}; {dirty}; {remote}{audit}{age})")
             for finding in report.findings:
                 lines.append(f"  - {finding}")
             for finding in report.secret_findings:
@@ -284,17 +333,24 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Read-only repo fleet scanner.")
     parser.add_argument("roots", nargs="*", default=["~/Documents"], help="Root directories to scan.")
     parser.add_argument("--max-depth", type=int, default=4, help="Maximum directory depth below each root.")
+    parser.add_argument("--config", help="Optional JSON config with roots, ignore, and stale_days.")
     parser.add_argument("--audit-node", action="store_true", help="Run npm audit for Node repos with lockfiles.")
     parser.add_argument("--secret-scan", action="store_true", help="Run a lightweight secret-pattern scan.")
     parser.add_argument("--markdown", action="store_true", help="Print Markdown instead of JSON.")
+    parser.add_argument("--only-actionable", action="store_true", help="Hide watch bucket from Markdown output.")
+    parser.add_argument("--stale-days", type=int, default=180, help="Clean repos older than this can be cleanup candidates.")
     args = parser.parse_args()
 
-    roots = [Path(root).expanduser() for root in args.roots]
-    repos = discover_repos(roots, args.max_depth)
-    reports = [inspect_repo(repo, args.audit_node, args.secret_scan) for repo in repos]
+    config = load_config(args.config)
+    configured_roots = config.get("roots") or args.roots
+    roots = [Path(root).expanduser() for root in configured_roots]
+    ignore_patterns = list(config.get("ignore") or [])
+    stale_days = int(config.get("stale_days") or args.stale_days)
+    repos = discover_repos(roots, args.max_depth, ignore_patterns)
+    reports = [inspect_repo(repo, args.audit_node, args.secret_scan, stale_days) for repo in repos]
 
     if args.markdown:
-        print(markdown_report(reports))
+        print(markdown_report(reports, args.only_actionable))
     else:
         print(json.dumps([report.__dict__ for report in reports], indent=2, sort_keys=True))
     return 0

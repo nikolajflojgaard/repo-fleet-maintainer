@@ -1,0 +1,9 @@
+{
+  "roots": ["~/Documents"],
+  "ignore": [
+    "*/node_modules/*",
+    "*/backups/*",
+    "*/release/*"
+  ],
+  "stale_days": 180
+}

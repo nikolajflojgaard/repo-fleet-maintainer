@@ -2,7 +2,7 @@
   "counts": {
     "deployments": 0,
     "entrypoints": 0,
-    "files": 9,
+    "files": 11,
     "flows": 0,
     "frameworks": 0,
     "interfaces": 0,
@@ -26,13 +26,13 @@
     },
     {
       "path": "README.md",
-      "size": 1479,
+      "size": 1960,
       "suffix": ".md",
       "tags": []
     },
     {
       "path": "SKILL.md",
-      "size": 5653,
+      "size": 6397,
       "suffix": ".md",
       "tags": []
     },
@@ -43,6 +43,12 @@
       "tags": []
     },
     {
+      "path": "examples/fleet-config.example.json",
+      "size": 132,
+      "suffix": ".json",
+      "tags": []
+    },
+    {
       "path": "examples/fleet-report-example.md",
       "size": 466,
       "suffix": ".md",
@@ -50,8 +56,14 @@
     },
     {
       "path": "scripts/repo_fleet_scan.py",
-      "size": 10607,
+      "size": 13342,
       "suffix": ".py",
+      "tags": []
+    },
+    {
+      "path": "templates/cleanup-plan.md",
+      "size": 630,
+      "suffix": ".md",
       "tags": []
     },
     {
@@ -81,12 +93,14 @@
     "SKILL.md": null,
     "code-docs.yml": null,
     "examples": {
+      "fleet-config.example.json": null,
       "fleet-report-example.md": null
     },
     "scripts": {
       "repo_fleet_scan.py": null
     },
     "templates": {
+      "cleanup-plan.md": null,
       "fleet-report.md": null,
       "repo-finding.json": null
     }

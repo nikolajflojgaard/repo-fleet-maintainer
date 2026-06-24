@@ -7,7 +7,7 @@
 - Service: `repo-fleet-maintainer`
 - Repository: `repo-fleet-maintainer`
 - Owner: `Nikolaj Fløjgaard`
-- Files inventoried: `9`
+- Files inventoried: `11`
 - Manifests: `0`
 - Frameworks detected: `0`
 - Routes detected: `0`

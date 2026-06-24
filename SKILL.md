@@ -34,6 +34,12 @@ python3 scripts/repo_fleet_scan.py ~/Documents --audit-node --secret-scan --mark
 
 The scanner is read-only. It reports repo type, dirty status, remotes, ahead/behind state, Node audit counts, lightweight secret findings, and recommended action buckets.
 
+To reduce report noise:
+
+```bash
+python3 scripts/repo_fleet_scan.py ~/Documents --markdown --only-actionable
+```
+
 ## Workflow
 
 1. **Discover repos**
@@ -56,12 +62,14 @@ The scanner is read-only. It reports repo type, dirty status, remotes, ahead/beh
    - obvious secret-file and token-pattern scan
    - docs/config presence checks
    - build/test command discovery
+   - cleanup-candidate detection for clean stale repos with no remote or unclear purpose
 
 4. **Plan fixes**
    Classify each finding:
    - `safe-fix`: lockfile-only or config-only fix with low blast radius.
    - `needs-review`: breaking upgrade, dirty worktree, missing secret, failed deploy, unclear ownership.
    - `blocked`: missing auth, missing remote, failing baseline, unknown dependency manager.
+   - `cleanup-candidate`: likely stale/no-remote/unknown repo, but do not delete automatically.
    - `watch`: low risk, no immediate action.
 
 5. **Apply fixes only when authorized**
@@ -134,6 +142,25 @@ Look for:
 - Slack/Discord/webhook tokens
 
 Treat matches as sensitive. Do not paste secrets into chat. Report file path and type only.
+
+## Cleanup Candidate Rules
+
+Cleanup candidates are review items, not delete actions.
+
+Mark a repo as cleanup candidate when it is clean and one or more is true:
+
+- no origin remote exists
+- repo type is unknown
+- no commits for the configured stale-day threshold
+
+Before removing anything, produce a cleanup plan with:
+
+- repo path
+- reason
+- last commit age
+- remote status
+- backup/archive recommendation
+- explicit user approval requirement
 
 ## Report Template
 
