@@ -1,0 +1,25 @@
+name: Code docs
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  code-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install code-doc-pipeline
+        run: python -m pip install "git+https://github.com/nikolajflojgaard/code-doc-pipeline.git"
+      - name: Check generated docs
+        run: code-docs check .
+      - name: Validate Mermaid diagrams
+        run: code-docs validate-diagrams .
